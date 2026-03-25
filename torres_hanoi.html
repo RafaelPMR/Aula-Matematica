@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Torres de Hanói</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0b0c15;
+  --surface:  #13141f;
+  --surface2: #1c1e2e;
+  --border:   #252840;
+  --gold:     #c9963a;
+  --gold2:    #e8b85a;
+  --text:     #ddd8c8;
+  --muted:    #7a7898;
+  --accent:   #4fc3f7;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Crimson Pro', serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Subtle background grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(201,150,58,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201,150,58,.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+body > * { position: relative; z-index: 1; }
+
+/* ── HEADER ── */
+.header { text-align: center; margin-bottom: 22px; }
+h1 {
+  font-family: 'Cinzel', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: .12em;
+  text-shadow: 0 0 40px rgba(201,150,58,.35);
+}
+.tagline {
+  color: var(--muted);
+  font-size: .95rem;
+  font-style: italic;
+  margin-top: 4px;
+}
+
+/* ── DISK SELECTOR ── */
+.disk-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 18px;
+}
+.disk-selector span {
+  color: var(--muted);
+  font-size: .85rem;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+.dbtn {
+  width: 38px; height: 38px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  font-family: 'Cinzel', serif;
+  font-size: .95rem;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all .18s;
+}
+.dbtn:hover { border-color: var(--gold); color: var(--gold); }
+.dbtn.active {
+  background: var(--gold);
+  color: var(--bg);
+  border-color: var(--gold);
+  font-weight: 700;
+}
+
+/* ── TOWER WRAPPER ── */
+.tower-wrapper {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 32px 16px;
+  margin-bottom: 14px;
+  width: min(740px, 100%);
+}
+.peg-labels {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 8px;
+}
+.peg-label {
+  font-family: 'Cinzel', serif;
+  color: var(--gold);
+  font-size: .9rem;
+  letter-spacing: .08em;
+  width: 200px;
+  text-align: center;
+}
+.towers-area {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 290px;
+}
+.peg-container {
+  position: relative;
+  width: 200px;
+  height: 270px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.peg-rod {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 11px;
+  height: 240px;
+  background: linear-gradient(to right, #4a3a1e, #8a6830, #4a3a1e);
+  border-radius: 5px 5px 0 0;
+  z-index: 1;
+  box-shadow: 0 0 12px rgba(0,0,0,.6);
+}
+.peg-base {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 168px;
+  height: 15px;
+  background: linear-gradient(to bottom, #7a5a28, #4a3818);
+  border-radius: 5px;
+  z-index: 2;
+  box-shadow: 0 4px 10px rgba(0,0,0,.5);
+}
+.disk {
+  position: absolute;
+  height: 26px;
+  border-radius: 13px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-size: .72rem;
+  font-weight: 600;
+  color: rgba(0,0,0,.75);
+  transition: bottom .3s ease, filter .3s;
+  cursor: default;
+  user-select: none;
+}
+.disk.moved {
+  animation: diskGlow .8s ease-out;
+  filter: brightness(1.35) !important;
+}
+@keyframes diskGlow {
+  0%   { transform: translateX(-50%) scaleY(1.15); filter: brightness(1.6) !important; }
+  100% { transform: translateX(-50%) scaleY(1); }
+}
+
+/* ── INFO BAR ── */
+.info-bar {
+  width: min(740px, 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 11px 20px;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+.move-desc { font-size: 1.05rem; color: var(--text); font-style: italic; }
+.step-count {
+  font-family: 'Cinzel', serif;
+  color: var(--gold);
+  font-size: .85rem;
+  white-space: nowrap;
+}
+
+/* ── CONTROLS ── */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.ctrl-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all .18s;
+  font-family: 'Cinzel', serif;
+  letter-spacing: .05em;
+}
+.ctrl-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.ctrl-btn:disabled { opacity: .3; cursor: not-allowed; }
+.play-btn {
+  background: var(--gold);
+  color: var(--bg);
+  border-color: var(--gold);
+  padding: 9px 26px;
+  font-weight: 700;
+}
+.play-btn:hover:not(:disabled) { background: var(--gold2); border-color: var(--gold2); color: var(--bg); }
+.speed-wrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: .82rem;
+}
+input[type=range] {
+  width: 90px;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+
+/* ── PROGRESS BAR ── */
+.prog-track {
+  width: min(740px, 100%);
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+.prog-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--gold), var(--gold2));
+  transition: width .28s ease;
+}
+
+/* ── FORMULA PANEL ── */
+.formula-panel {
+  width: min(740px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 28px;
+  display: flex;
+  gap: 0;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.f-item { text-align: center; }
+.f-label { color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 3px; }
+.f-value { font-family: 'Cinzel', serif; font-size: 1.3rem; color: var(--gold2); }
+.f-sub   { color: var(--muted); font-size: .78rem; margin-top: 2px; font-style: italic; }
+
+/* ── ALGO PANEL ── */
+.algo-panel {
+  width: min(740px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 24px;
+  margin-top: 18px;
+}
+.algo-panel h3 {
+  font-family: 'Cinzel', serif;
+  color: var(--gold);
+  font-size: .9rem;
+  letter-spacing: .08em;
+  margin-bottom: 12px;
+}
+pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 18px;
+  font-size: .82rem;
+  color: #c8d8f8;
+  line-height: 1.7;
+  overflow-x: auto;
+  font-family: 'Courier New', monospace;
+}
+.kw { color: #d09bf8; }
+.fn { color: #82d8f8; }
+.cm { color: #6a7a6a; }
+.st { color: #a8d88a; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Torres de Hanói</h1>
+  <p class="tagline">Algoritmo recursivo — passo a passo visual</p>
+</div>
+
+<div class="disk-selector">
+  <span>Discos:</span>
+  <button class="dbtn" data-n="1">1</button>
+  <button class="dbtn" data-n="2">2</button>
+  <button class="dbtn active" data-n="3">3</button>
+  <button class="dbtn" data-n="4">4</button>
+  <button class="dbtn" data-n="5">5</button>
+  <button class="dbtn" data-n="6">6</button>
+  <button class="dbtn" data-n="7">7</button>
+</div>
+
+<div class="tower-wrapper">
+  <div class="peg-labels">
+    <div class="peg-label">Pino A <small style="color:var(--muted);font-size:.75rem">(origem)</small></div>
+    <div class="peg-label">Pino B <small style="color:var(--muted);font-size:.75rem">(auxiliar)</small></div>
+    <div class="peg-label">Pino C <small style="color:var(--muted);font-size:.75rem">(destino)</small></div>
+  </div>
+  <div class="towers-area" id="towers"></div>
+</div>
+
+<div class="info-bar">
+  <div class="move-desc" id="moveDesc">Estado inicial</div>
+  <div class="step-count" id="stepCount">Passo 0 de 0</div>
+</div>
+
+<div class="controls">
+  <button class="ctrl-btn" id="btnFirst" title="Início">⏮</button>
+  <button class="ctrl-btn" id="btnPrev"  title="Anterior">◀</button>
+  <button class="ctrl-btn play-btn" id="btnPlay">▶ Iniciar</button>
+  <button class="ctrl-btn" id="btnNext"  title="Próximo">▶</button>
+  <button class="ctrl-btn" id="btnLast"  title="Fim">⏭</button>
+  <div class="speed-wrap">
+    <span>Velocidade:</span>
+    <input type="range" id="speedSlider" min="1" max="10" value="5">
+    <span id="speedLabel">5×</span>
+  </div>
+</div>
+
+<div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+
+<div class="formula-panel" id="formulaPanel"></div>
+
+<div class="algo-panel">
+  <h3>⚙ Algoritmo Recursivo (Python)</h3>
+  <pre><span class="kw">def</span> <span class="fn">hanoi</span>(n, origem, auxiliar, destino):
+    <span class="cm"># Caso base: só 1 disco → mova diretamente</span>
+    <span class="kw">if</span> n == 1:
+        <span class="fn">print</span>(<span class="st">f"Mover disco 1: {origem} → {destino}"</span>)
+        <span class="kw">return</span>
+
+    <span class="cm"># Passo 1: mova os N-1 discos de cima para o auxiliar</span>
+    <span class="fn">hanoi</span>(n - 1, origem, destino, auxiliar)
+
+    <span class="cm"># Passo 2: mova o disco maior para o destino</span>
+    <span class="fn">print</span>(<span class="st">f"Mover disco {n}: {origem} → {destino}"</span>)
+
+    <span class="cm"># Passo 3: mova os N-1 discos do auxiliar para o destino</span>
+    <span class="fn">hanoi</span>(n - 1, auxiliar, origem, destino)
+
+<span class="cm"># Chamada para 3 discos</span>
+<span class="fn">hanoi</span>(3, <span class="st">'A'</span>, <span class="st">'B'</span>, <span class="st">'C'</span>)</pre>
+</div>
+
+<script>
+// ─── CONSTANTS ───────────────────────────────────────
+const DISK_H   = 26;
+const DISK_GAP = 3;
+const BASE_H   = 15;
+const MAX_W    = 178;
+const MIN_W    = 38;
+const MAX_N    = 7;
+
+const COLORS = ['', '#e85555','#e8912a','#d4c030','#3ad46a','#3aaae8','#9b50e8','#e83a9a'];
+const PEG_NAMES = ['A', 'B', 'C'];
+
+// ─── STATE ───────────────────────────────────────────
+let numDisks  = 3;
+let states    = [];
+let step      = 0;
+let playing   = false;
+let timer     = null;
+
+// ─── ALGORITHM ───────────────────────────────────────
+function computeStates(n) {
+  const result = [];
+  const pegs = [[], [], []];
+  for (let i = n; i >= 1; i--) pegs[0].push(i);
+
+  result.push({
+    pegs: clone(pegs),
+    disk: null, from: null, to: null,
+    desc: `Estado inicial — ${n} disco${n>1?'s':''} no Pino A`
+  });
+
+  function hanoi(k, f, a, t) {
+    if (k === 1) {
+      const d = pegs[f].pop();
+      pegs[t].push(d);
+      result.push({
+        pegs: clone(pegs),
+        disk: d, from: f, to: t,
+        desc: `Disco ${d} (${sizeLabel(d, n)})  :  Pino ${PEG_NAMES[f]} → Pino ${PEG_NAMES[t]}`
+      });
+    } else {
+      hanoi(k-1, f, t, a);
+      hanoi(1,   f, a, t);
+      hanoi(k-1, a, f, t);
+    }
+  }
+
+  hanoi(n, 0, 1, 2);
+  return result;
+}
+
+function clone(p) { return p.map(a => [...a]); }
+function sizeLabel(d, n) {
+  if (d === 1) return 'menor';
+  if (d === n) return 'maior';
+  return `tamanho ${d}`;
+}
+
+// ─── DISK WIDTH ───────────────────────────────────────
+function diskWidth(d, n) {
+  if (n === 1) return 110;
+  return Math.round(MIN_W + (d - 1) * (MAX_W - MIN_W) / (n - 1));
+}
+
+// ─── RENDER ──────────────────────────────────────────
+function render(s) {
+  const st  = states[s];
+  const tow = document.getElementById('towers');
+  tow.innerHTML = '';
+
+  for (let p = 0; p < 3; p++) {
+    const cont = document.createElement('div');
+    cont.className = 'peg-container';
+
+    const rod  = document.createElement('div'); rod.className  = 'peg-rod';
+    const base = document.createElement('div'); base.className = 'peg-base';
+    cont.appendChild(rod);
+    cont.appendChild(base);
+
+    st.pegs[p].forEach((d, idx) => {
+      const el = document.createElement('div');
+      el.className = 'disk';
+      if (d === st.disk && st.to === p) el.classList.add('moved');
+
+      const w  = diskWidth(d, numDisks);
+      const bt = BASE_H + idx * (DISK_H + DISK_GAP);
+
+      el.style.cssText = `
+        width: ${w}px;
+        bottom: ${bt}px;
+        background: ${COLORS[d]};
+        box-shadow: 0 3px 10px rgba(0,0,0,.55), inset 0 1px 2px rgba(255,255,255,.22);
+      `;
+      if (d === st.disk && st.to === p)
+        el.style.boxShadow += `, 0 0 18px ${COLORS[d]}aa`;
+
+      el.title = `Disco ${d}`;
+      cont.appendChild(el);
+    });
+
+    tow.appendChild(cont);
+  }
+
+  // Info
+  document.getElementById('moveDesc').textContent  = st.desc;
+  document.getElementById('stepCount').textContent =
+    `Passo ${s} de ${states.length - 1}`;
+
+  const pct = states.length > 1 ? (s / (states.length - 1)) * 100 : 0;
+  document.getElementById('progFill').style.width = pct + '%';
+
+  // Buttons
+  document.getElementById('btnFirst').disabled = s === 0;
+  document.getElementById('btnPrev').disabled  = s === 0;
+  document.getElementById('btnNext').disabled  = s === states.length - 1;
+  document.getElementById('btnLast').disabled  = s === states.length - 1;
+}
+
+// ─── FORMULA PANEL ───────────────────────────────────
+function updateFormula() {
+  const n    = numDisks;
+  const moves = Math.pow(2, n) - 1;
+  const panel = document.getElementById('formulaPanel');
+  panel.innerHTML = `
+    <div class="f-item">
+      <div class="f-label">Discos</div>
+      <div class="f-value">${n}</div>
+    </div>
+    <div class="f-item">
+      <div class="f-label">Fórmula</div>
+      <div class="f-value">2<sup style="font-size:.8rem">${n}</sup> − 1</div>
+    </div>
+    <div class="f-item">
+      <div class="f-label">Movimentos mínimos</div>
+      <div class="f-value">${moves}</div>
+    </div>
+    <div class="f-item">
+      <div class="f-label">Passo atual</div>
+      <div class="f-value" id="fpStep">${step}</div>
+      <div class="f-sub">de ${moves} movimentos</div>
+    </div>
+    <div class="f-item">
+      <div class="f-label">Conclusão</div>
+      <div class="f-value">${step === states.length - 1 ? '✓' : '…'}</div>
+      <div class="f-sub">${step === states.length - 1 ? 'Resolvido!' : 'Em progresso'}</div>
+    </div>
+  `;
+}
+
+// ─── PLAY ────────────────────────────────────────────
+function getDelay() {
+  const spd = parseInt(document.getElementById('speedSlider').value);
+  return Math.round(2100 - spd * 190);
+}
+
+function startPlay() {
+  if (step >= states.length - 1) step = 0;
+  playing = true;
+  document.getElementById('btnPlay').textContent = '⏸ Pausar';
+  tick();
+}
+
+function tick() {
+  if (!playing) return;
+  if (step >= states.length - 1) {
+    stopPlay();
+    return;
+  }
+  step++;
+  render(step);
+  updateFormula();
+  timer = setTimeout(tick, getDelay());
+}
+
+function stopPlay() {
+  playing = false;
+  clearTimeout(timer);
+  document.getElementById('btnPlay').textContent = '▶ Iniciar';
+}
+
+// ─── INIT ────────────────────────────────────────────
+function init(n) {
+  stopPlay();
+  numDisks = n;
+  states   = computeStates(n);
+  step     = 0;
+  render(0);
+  updateFormula();
+
+  // Update disk selector buttons
+  document.querySelectorAll('.dbtn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.n) === n);
+  });
+}
+
+// ─── EVENT LISTENERS ─────────────────────────────────
+document.querySelectorAll('.dbtn').forEach(b => {
+  b.addEventListener('click', () => init(parseInt(b.dataset.n)));
+});
+
+document.getElementById('btnFirst').addEventListener('click', () => {
+  stopPlay(); step = 0; render(step); updateFormula();
+});
+document.getElementById('btnPrev').addEventListener('click', () => {
+  stopPlay(); if (step > 0) { step--; render(step); updateFormula(); }
+});
+document.getElementById('btnNext').addEventListener('click', () => {
+  stopPlay(); if (step < states.length - 1) { step++; render(step); updateFormula(); }
+});
+document.getElementById('btnLast').addEventListener('click', () => {
+  stopPlay(); step = states.length - 1; render(step); updateFormula();
+});
+document.getElementById('btnPlay').addEventListener('click', () => {
+  if (playing) stopPlay(); else startPlay();
+});
+document.getElementById('speedSlider').addEventListener('input', function() {
+  document.getElementById('speedLabel').textContent = this.value + '×';
+});
+
+// Keyboard navigation
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') document.getElementById('btnNext').click();
+  if (e.key === 'ArrowLeft')  document.getElementById('btnPrev').click();
+  if (e.key === ' ') { e.preventDefault(); document.getElementById('btnPlay').click(); }
+});
+
+// Boot with 3 disks
+init(3);
+</script>
+</body>
+</html>
