@@ -16,5 +16,5 @@ class ProgressaoGeo:
             print(self.calcular_termo(i))
 
 pg = ProgressaoGeo(2,3)
-pg.exibir(1)
+pg.exibir(50)
 
